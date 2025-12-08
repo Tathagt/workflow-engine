@@ -1,0 +1,38 @@
+{
+  "name": "code_review_workflow",
+  "nodes": {
+    "extract": {
+      "function": "extract_functions",
+      "params": {}
+    },
+    "analyze": {
+      "function": "check_complexity",
+      "params": {}
+    },
+    "detect": {
+      "function": "detect_issues",
+      "params": {}
+    },
+    "suggest": {
+      "function": "suggest_improvements",
+      "params": {}
+    },
+    "check_quality": {
+      "function": "check_quality_score",
+      "params": {}
+    }
+  },
+  "edges": {
+    "extract": "analyze",
+    "analyze": "detect",
+    "detect": "suggest",
+    "suggest": "check_quality"
+  },
+  "conditional_edges": {
+    "check_quality": {
+      "condition": "quality_score >= threshold",
+      "true": "END",
+      "false": "analyze"
+    }
+  }
+}
