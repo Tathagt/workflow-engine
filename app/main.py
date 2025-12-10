@@ -14,8 +14,8 @@ from app.models import (
 from app.engine import workflow_engine
 
 app = FastAPI(
-    title="Workflow Engine API",
-    description="A minimal workflow/graph engine with support for nodes, edges, branching, and looping",
+    title="Engine API",
+    description="A engine with support for nodes, edges, branching, and looping",
     version="1.0.0"
 )
 
@@ -33,7 +33,7 @@ app.add_middleware(
 async def root():
     """Root endpoint"""
     return {
-        "message": "Workflow Engine API",
+        "message": "Engine API",
         "version": "1.0.0",
         "docs": "/docs"
     }
