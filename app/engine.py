@@ -1,7 +1,7 @@
 """
-Core workflow engine implementation
+Core workflow engine implementation with WebSocket streaming and background task support
 """
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Callable
 from datetime import datetime
 import uuid
 import asyncio
@@ -15,11 +15,12 @@ from app.tools import tool_registry
 
 
 class WorkflowEngine:
-    """Core workflow execution engine"""
+    """Core workflow execution engine with streaming and background execution"""
     
     def __init__(self):
         self.graphs: Dict[str, GraphDefinition] = {}
         self.runs: Dict[str, Dict[str, Any]] = {}
+        self.background_tasks: Dict[str, asyncio.Task] = {}
     
     def create_graph(self, graph_def: GraphDefinition) -> str:
         """Create a new workflow graph"""
@@ -34,9 +35,10 @@ class WorkflowEngine:
     async def run_graph(
         self, 
         graph_id: str, 
-        initial_state: Dict[str, Any]
+        initial_state: Dict[str, Any],
+        stream_callback: Optional[Callable] = None
     ) -> Dict[str, Any]:
-        """Execute a workflow graph"""
+        """Execute a workflow graph with optional streaming"""
         graph = self.get_graph(graph_id)
         if not graph:
             raise ValueError(f"Graph {graph_id} not found")
@@ -56,50 +58,129 @@ class WorkflowEngine:
         
         self.runs[run_id] = run_state
         
+        # Send initial status via stream
+        if stream_callback:
+            await stream_callback({
+                "type": "status",
+                "run_id": run_id,
+                "status": "started",
+                "timestamp": datetime.now().isoformat()
+            })
+        
         try:
             # Execute the workflow
             final_state = await self._execute_workflow(
                 graph, 
                 run_state["state"], 
-                run_state["execution_log"]
+                run_state["execution_log"],
+                stream_callback,
+                run_id
             )
             
             run_state["state"] = final_state
             run_state["status"] = ExecutionStatus.COMPLETED
             run_state["end_time"] = datetime.now()
             
+            # Send completion status
+            if stream_callback:
+                await stream_callback({
+                    "type": "status",
+                    "run_id": run_id,
+                    "status": "completed",
+                    "timestamp": datetime.now().isoformat()
+                })
+            
         except Exception as e:
             run_state["status"] = ExecutionStatus.FAILED
             run_state["error"] = str(e)
             run_state["end_time"] = datetime.now()
+            
+            # Send error status
+            if stream_callback:
+                await stream_callback({
+                    "type": "error",
+                    "run_id": run_id,
+                    "error": str(e),
+                    "timestamp": datetime.now().isoformat()
+                })
             raise
         
         return run_state
+    
+    async def run_graph_background(
+        self,
+        graph_id: str,
+        initial_state: Dict[str, Any]
+    ) -> str:
+        """Execute a workflow graph as a background task"""
+        run_id = str(uuid.uuid4())
+        
+        # Create background task
+        task = asyncio.create_task(
+            self.run_graph(graph_id, initial_state)
+        )
+        
+        self.background_tasks[run_id] = task
+        
+        # Initialize run state immediately
+        self.runs[run_id] = {
+            "run_id": run_id,
+            "graph_id": graph_id,
+            "status": ExecutionStatus.PENDING,
+            "current_node": None,
+            "state": initial_state.copy(),
+            "execution_log": [],
+            "start_time": datetime.now()
+        }
+        
+        return run_id
     
     async def _execute_workflow(
         self,
         graph: GraphDefinition,
         state: Dict[str, Any],
-        execution_log: List[ExecutionLogEntry]
+        execution_log: List[ExecutionLogEntry],
+        stream_callback: Optional[Callable] = None,
+        run_id: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Execute workflow nodes in sequence"""
+        """Execute workflow nodes in sequence with streaming support"""
         
-        # Find the starting node (first node in edges or first node defined)
+        # Find the starting node
         current_node = self._find_start_node(graph)
-        visited_nodes = set()
         max_iterations = state.get("max_iterations", 10)
         iteration_count = 0
         
         while current_node and current_node != "END":
+            # Update current node in run state
+            if run_id and run_id in self.runs:
+                self.runs[run_id]["current_node"] = current_node
+            
+            # Stream node start event
+            if stream_callback:
+                await stream_callback({
+                    "type": "node_start",
+                    "node": current_node,
+                    "iteration": iteration_count + 1,
+                    "timestamp": datetime.now().isoformat()
+                })
+            
             # Prevent infinite loops
             iteration_count += 1
             if iteration_count > max_iterations:
-                execution_log.append(ExecutionLogEntry(
+                log_entry = ExecutionLogEntry(
                     node="SYSTEM",
                     status="terminated",
                     timestamp=datetime.now(),
                     details={"reason": "Max iterations reached"}
-                ))
+                )
+                execution_log.append(log_entry)
+                
+                if stream_callback:
+                    await stream_callback({
+                        "type": "system",
+                        "message": "Max iterations reached",
+                        "timestamp": datetime.now().isoformat()
+                    })
                 break
             
             # Execute current node
@@ -108,37 +189,64 @@ class WorkflowEngine:
                     graph, 
                     current_node, 
                     state, 
-                    execution_log
+                    execution_log,
+                    stream_callback
                 )
+                
+                # Stream node completion
+                if stream_callback:
+                    await stream_callback({
+                        "type": "node_complete",
+                        "node": current_node,
+                        "state_update": {
+                            k: v for k, v in state.items() 
+                            if k not in ["code", "max_iterations", "threshold"]
+                        },
+                        "timestamp": datetime.now().isoformat()
+                    })
                 
                 # Determine next node
-                current_node = self._get_next_node(
-                    graph, 
-                    current_node, 
-                    state
-                )
+                next_node = self._get_next_node(graph, current_node, state)
+                
+                # Stream transition
+                if stream_callback and next_node:
+                    await stream_callback({
+                        "type": "transition",
+                        "from": current_node,
+                        "to": next_node,
+                        "timestamp": datetime.now().isoformat()
+                    })
+                
+                current_node = next_node
                 
             except Exception as e:
-                execution_log.append(ExecutionLogEntry(
+                log_entry = ExecutionLogEntry(
                     node=current_node,
                     status="failed",
                     timestamp=datetime.now(),
                     details={"error": str(e)}
-                ))
+                )
+                execution_log.append(log_entry)
+                
+                if stream_callback:
+                    await stream_callback({
+                        "type": "node_error",
+                        "node": current_node,
+                        "error": str(e),
+                        "timestamp": datetime.now().isoformat()
+                    })
                 raise
         
         return state
     
     def _find_start_node(self, graph: GraphDefinition) -> str:
         """Find the starting node of the workflow"""
-        # The start node is one that is not a target of any edge
         target_nodes = set(graph.edges.values())
         
         for node in graph.nodes.keys():
             if node not in target_nodes:
                 return node
         
-        # If all nodes are targets, return the first one
         return list(graph.nodes.keys())[0] if graph.nodes else None
     
     async def _execute_node(
@@ -146,7 +254,8 @@ class WorkflowEngine:
         graph: GraphDefinition,
         node_name: str,
         state: Dict[str, Any],
-        execution_log: List[ExecutionLogEntry]
+        execution_log: List[ExecutionLogEntry],
+        stream_callback: Optional[Callable] = None
     ) -> Dict[str, Any]:
         """Execute a single node"""
         
@@ -160,19 +269,22 @@ class WorkflowEngine:
         # Execute the tool
         start_time = datetime.now()
         
-        # Run synchronously (can be made async if tools are async)
+        # Run synchronously in thread pool
         result_state = await asyncio.to_thread(tool_func, state)
         
+        duration_ms = (datetime.now() - start_time).total_seconds() * 1000
+        
         # Log execution
-        execution_log.append(ExecutionLogEntry(
+        log_entry = ExecutionLogEntry(
             node=node_name,
             status="completed",
             timestamp=datetime.now(),
             details={
                 "function": node_config.function,
-                "duration_ms": (datetime.now() - start_time).total_seconds() * 1000
+                "duration_ms": duration_ms
             }
-        ))
+        )
+        execution_log.append(log_entry)
         
         return result_state
     
@@ -196,7 +308,6 @@ class WorkflowEngine:
         if current_node in graph.edges:
             return graph.edges[current_node]
         
-        # No more nodes
         return "END"
     
     def _evaluate_condition(
@@ -205,16 +316,12 @@ class WorkflowEngine:
         state: Dict[str, Any]
     ) -> bool:
         """Evaluate a conditional expression"""
-        
-        # Simple condition evaluation
-        # Format: "key operator value" (e.g., "quality_score >= threshold")
         try:
             # Replace state variables with their values
             for key, value in state.items():
                 if key in condition:
                     condition = condition.replace(key, str(value))
             
-            # Evaluate the condition
             return eval(condition)
         except Exception as e:
             print(f"Error evaluating condition: {e}")
@@ -223,6 +330,23 @@ class WorkflowEngine:
     def get_run_state(self, run_id: str) -> Optional[Dict[str, Any]]:
         """Get the current state of a workflow run"""
         return self.runs.get(run_id)
+    
+    def get_background_task_status(self, run_id: str) -> Dict[str, Any]:
+        """Get the status of a background task"""
+        if run_id not in self.background_tasks:
+            return {"status": "not_found"}
+        
+        task = self.background_tasks[run_id]
+        
+        if task.done():
+            if task.exception():
+                return {
+                    "status": "failed",
+                    "error": str(task.exception())
+                }
+            return {"status": "completed"}
+        
+        return {"status": "running"}
 
 
 # Global engine instance
