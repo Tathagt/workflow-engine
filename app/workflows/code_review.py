@@ -1,14 +1,6 @@
-"""
-Code Review Workflow Example
 
-This workflow demonstrates:
-1. Sequential node execution
-2. State management across nodes
-3. Conditional branching
-4. Looping until quality threshold is met
-"""
 
-# Example graph definition for code review workflow
+
 CODE_REVIEW_GRAPH = {
     "name": "code_review_workflow",
     "nodes": {
@@ -48,7 +40,7 @@ CODE_REVIEW_GRAPH = {
     }
 }
 
-# Example initial state
+
 EXAMPLE_CODE = """
 def calculate_total(items):
     total = 0

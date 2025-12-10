@@ -1,6 +1,4 @@
-"""
-FastAPI application for workflow engine with WebSocket streaming and background tasks
-"""
+
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 import json
@@ -20,7 +18,7 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# Add CORS middleware
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -32,7 +30,7 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    """Root endpoint"""
+    
     return {
         "message": "Workflow Engine API",
         "version": "2.0.0",
@@ -49,15 +47,7 @@ async def root():
 
 @app.post("/graph/create", response_model=GraphCreateResponse)
 async def create_graph(graph_def: GraphDefinition):
-    """
-    Create a new workflow graph
     
-    Args:
-        graph_def: Graph definition with nodes, edges, and conditional edges
-    
-    Returns:
-        GraphCreateResponse with graph_id
-    """
     try:
         graph_id = workflow_engine.create_graph(graph_def)
         return GraphCreateResponse(
@@ -70,15 +60,7 @@ async def create_graph(graph_def: GraphDefinition):
 
 @app.post("/graph/run", response_model=RunResponse)
 async def run_graph(run_request: RunRequest):
-    """
-    Execute a workflow graph synchronously
-    
-    Args:
-        run_request: Contains graph_id and initial_state
-    
-    Returns:
-        RunResponse with run_id, final_state, and execution_log
-    """
+   
     try:
         result = await workflow_engine.run_graph(
             run_request.graph_id,
@@ -99,15 +81,7 @@ async def run_graph(run_request: RunRequest):
 
 @app.post("/graph/run/background")
 async def run_graph_background(run_request: RunRequest):
-    """
-    Execute a workflow graph as a background task
     
-    Args:
-        run_request: Contains graph_id and initial_state
-    
-    Returns:
-        run_id for tracking the background task
-    """
     try:
         run_id = await workflow_engine.run_graph_background(
             run_request.graph_id,
@@ -127,15 +101,7 @@ async def run_graph_background(run_request: RunRequest):
 
 @app.get("/graph/state/{run_id}", response_model=StateResponse)
 async def get_workflow_state(run_id: str):
-    """
-    Get the current state of a workflow run
     
-    Args:
-        run_id: The ID of the workflow run
-    
-    Returns:
-        StateResponse with current state and execution log
-    """
     run_state = workflow_engine.get_run_state(run_id)
     
     if not run_state:
@@ -152,15 +118,7 @@ async def get_workflow_state(run_id: str):
 
 @app.get("/graph/background/{run_id}/status")
 async def get_background_task_status(run_id: str):
-    """
-    Get the status of a background task
     
-    Args:
-        run_id: The ID of the background task
-    
-    Returns:
-        Status information about the background task
-    """
     task_status = workflow_engine.get_background_task_status(run_id)
     run_state = workflow_engine.get_run_state(run_id)
     
@@ -184,24 +142,7 @@ async def get_background_task_status(run_id: str):
 
 @app.websocket("/ws/graph/run/{graph_id}")
 async def websocket_run_graph(websocket: WebSocket, graph_id: str):
-    """
-    Execute a workflow graph with real-time WebSocket streaming
     
-    Streams execution events including:
-    - Workflow start/completion
-    - Node execution start/completion
-    - State updates
-    - Transitions between nodes
-    - Errors
-    
-    Args:
-        websocket: WebSocket connection
-        graph_id: ID of the graph to execute
-    
-    WebSocket Message Format:
-        Client sends: {"initial_state": {...}}
-        Server sends: {"type": "...", "data": {...}}
-    """
     await websocket.accept()
     
     try:

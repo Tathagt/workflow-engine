@@ -1,18 +1,15 @@
-"""
-Background task execution example - demonstrates async workflow execution
-"""
 import requests
 import time
 
 
 def test_background_execution():
-    """Test background task execution"""
+    
     
     print("=" * 60)
     print("Background Task Execution Test")
     print("=" * 60)
     
-    # Step 1: Create a graph
+
     print("\n1. Creating workflow graph...")
     
     graph_response = requests.post("http://localhost:8000/graph/create", json={
@@ -42,7 +39,6 @@ def test_background_execution():
     graph_id = graph_response.json()["graph_id"]
     print(f"✓ Graph created: {graph_id}")
     
-    # Step 2: Start background execution
     print("\n2. Starting workflow in background...")
     
     test_code = """
@@ -83,7 +79,7 @@ def is_prime(n):
     print(f"  Run ID: {run_id}")
     print(f"  Status endpoint: {result['status_endpoint']}")
     
-    # Step 3: Poll for status
+    
     print("\n3. Polling for task status...")
     print("-" * 60)
     
@@ -93,13 +89,13 @@ def is_prime(n):
     while poll_count < max_polls:
         poll_count += 1
         
-        # Check background task status
+        
         task_status_response = requests.get(
             f"http://localhost:8000/graph/background/{run_id}/status"
         )
         task_status = task_status_response.json()
         
-        # Check workflow state
+        
         state_response = requests.get(
             f"http://localhost:8000/graph/state/{run_id}"
         )
@@ -111,7 +107,7 @@ def is_prime(n):
         
         print(f"[Poll {poll_count}] Task: {task_status_value} | Workflow: {workflow_status} | Node: {current_node}")
         
-        # Check if completed
+        
         if task_status_value == "completed" or workflow_status == "completed":
             print("\n✓ Workflow completed!")
             break
@@ -120,10 +116,10 @@ def is_prime(n):
             print(f"\n✗ Workflow failed: {task_status.get('error')}")
             break
         
-        # Wait before next poll
+        
         time.sleep(0.5)
     
-    # Step 4: Get final results
+    
     print("\n4. Fetching final results...")
     print("-" * 60)
     
@@ -143,7 +139,7 @@ def is_prime(n):
     print(f"  Quality Score: {state_data.get('quality_score', 0):.2f}/10")
     print(f"  Iterations: {state_data.get('iteration', 0)}")
     
-    # Show execution log
+    
     print(f"\nExecution Log:")
     for log_entry in final_state.get("execution_log", []):
         node = log_entry.get("node")
@@ -162,7 +158,7 @@ def test_multiple_background_tasks():
     print("Multiple Background Tasks Test")
     print("=" * 60)
     
-    # Create a graph
+    
     print("\n1. Creating workflow graph...")
     
     graph_response = requests.post("http://localhost:8000/graph/create", json={
@@ -179,7 +175,7 @@ def test_multiple_background_tasks():
     graph_id = graph_response.json()["graph_id"]
     print(f"✓ Graph created: {graph_id}")
     
-    # Start multiple background tasks
+    
     print("\n2. Starting 3 parallel workflows...")
     
     run_ids = []
@@ -201,7 +197,7 @@ def task_{i}_function():
         run_ids.append(run_id)
         print(f"  ✓ Task {i+1} started: {run_id[:8]}...")
     
-    # Wait for all to complete
+    
     print("\n3. Waiting for all tasks to complete...")
     
     completed = [False] * 3

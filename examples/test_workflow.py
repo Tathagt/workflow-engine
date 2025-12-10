@@ -1,6 +1,3 @@
-"""
-Test script to demonstrate the workflow engine
-"""
 import requests
 import json
 import time
@@ -9,13 +6,13 @@ BASE_URL = "http://localhost:8000"
 
 
 def test_code_review_workflow():
-    """Test the code review workflow"""
+    
     
     print("=" * 60)
     print("Testing Code Review Workflow")
     print("=" * 60)
     
-    # Step 1: Create the graph
+    
     print("\n1. Creating workflow graph...")
     
     graph_definition = {
@@ -53,7 +50,7 @@ def test_code_review_workflow():
         print(f"✗ Failed to create graph: {response.text}")
         return
     
-    # Step 2: Run the workflow
+    
     print("\n2. Running workflow...")
     
     test_code = """
@@ -97,7 +94,7 @@ def complex_function(a, b, c, d, e):
         print(f"✓ Workflow executed successfully!")
         print(f"  Run ID: {run_id}")
         
-        # Display results
+        
         print("\n3. Workflow Results:")
         print("-" * 60)
         
@@ -109,19 +106,19 @@ def complex_function(a, b, c, d, e):
         print(f"  Quality Score: {final_state.get('quality_score', 0):.2f}/10")
         print(f"  Iterations: {final_state.get('iteration', 0)}")
         
-        # Display issues
+       
         if final_state.get('issues'):
             print("\n  Issues Found:")
-            for issue in final_state['issues'][:5]:  # Show first 5
+            for issue in final_state['issues'][:5]: 
                 print(f"    - {issue.get('type')}: {issue.get('message')}")
         
-        # Display suggestions
+        
         if final_state.get('suggestions'):
             print("\n  Suggestions:")
             for suggestion in final_state['suggestions']:
                 print(f"    - [{suggestion.get('priority')}] {suggestion.get('suggestion')}")
         
-        # Display execution log
+        
         print("\n4. Execution Log:")
         print("-" * 60)
         for log_entry in result["execution_log"]:
@@ -129,7 +126,7 @@ def complex_function(a, b, c, d, e):
             status = log_entry.get('status')
             print(f"  {node}: {status}")
         
-        # Step 3: Query the state
+        
         print("\n5. Querying workflow state...")
         response = requests.get(f"{BASE_URL}/graph/state/{run_id}")
         

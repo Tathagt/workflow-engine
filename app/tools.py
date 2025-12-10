@@ -1,13 +1,11 @@
-"""
-Tool registry and tool implementations for workflow engine
-"""
+
 from typing import Dict, Any, Callable
 import re
 import ast
 
 
 class ToolRegistry:
-    """Registry for managing workflow tools (functions)"""
+    
     
     def __init__(self):
         self._tools: Dict[str, Callable] = {}
@@ -27,11 +25,11 @@ class ToolRegistry:
         return list(self._tools.keys())
 
 
-# Global tool registry instance
+
 tool_registry = ToolRegistry()
 
 
-# Code Review Tools Implementation
+
 
 def extract_functions(state: Dict[str, Any]) -> Dict[str, Any]:
     """Extract function definitions from code"""
@@ -49,7 +47,7 @@ def extract_functions(state: Dict[str, Any]) -> Dict[str, Any]:
                     "body_lines": len(node.body)
                 })
     except SyntaxError:
-        # Fallback to regex if AST parsing fails
+        
         pattern = r'def\s+(\w+)\s*\([^)]*\):'
         matches = re.finditer(pattern, code)
         for match in matches:
@@ -71,16 +69,16 @@ def check_complexity(state: Dict[str, Any]) -> Dict[str, Any]:
     complexity_scores = []
     
     for func in functions:
-        # Simple complexity heuristic based on control flow keywords
+        
         func_name = func.get("name", "")
         
-        # Count complexity indicators
+       
         if_count = code.count(f"if ") + code.count(f"elif ")
         for_count = code.count(f"for ")
         while_count = code.count(f"while ")
         try_count = code.count(f"try:")
         
-        # Calculate cyclomatic complexity (simplified)
+        
         complexity = 1 + if_count + for_count + while_count + try_count
         
         complexity_scores.append({
@@ -99,11 +97,11 @@ def detect_issues(state: Dict[str, Any]) -> Dict[str, Any]:
     code = state.get("code", "")
     issues = []
     
-    # Check for common code smells
+   
     lines = code.split('\n')
     
     for i, line in enumerate(lines, 1):
-        # Long lines
+        
         if len(line) > 100:
             issues.append({
                 "line": i,
@@ -111,7 +109,7 @@ def detect_issues(state: Dict[str, Any]) -> Dict[str, Any]:
                 "message": f"Line exceeds 100 characters ({len(line)} chars)"
             })
         
-        # Multiple statements on one line
+        
         if ';' in line and not line.strip().startswith('#'):
             issues.append({
                 "line": i,
@@ -119,7 +117,7 @@ def detect_issues(state: Dict[str, Any]) -> Dict[str, Any]:
                 "message": "Multiple statements on one line"
             })
         
-        # Missing docstrings for functions
+        
         if line.strip().startswith('def ') and i < len(lines):
             next_line = lines[i].strip() if i < len(lines) else ""
             if not next_line.startswith('"""') and not next_line.startswith("'''"):
@@ -130,7 +128,7 @@ def detect_issues(state: Dict[str, Any]) -> Dict[str, Any]:
                     "message": f"Function '{func_name}' missing docstring"
                 })
     
-    # Check for high complexity
+   
     complexity_scores = state.get("complexity_scores", [])
     for score in complexity_scores:
         if score["complexity"] > 10:
@@ -156,7 +154,7 @@ def suggest_improvements(state: Dict[str, Any]) -> Dict[str, Any]:
         issue_type = issue.get("type", "unknown")
         issue_types[issue_type] = issue_types.get(issue_type, 0) + 1
     
-    # Generate suggestions based on issue patterns
+    
     if issue_types.get("long_line", 0) > 0:
         suggestions.append({
             "category": "formatting",
@@ -197,32 +195,31 @@ def check_quality_score(state: Dict[str, Any]) -> Dict[str, Any]:
     function_count = state.get("function_count", 1)
     avg_complexity = state.get("avg_complexity", 0)
     
-    # Calculate quality score (0-10 scale)
-    # Start with 10 and deduct points
+    
     quality_score = 10.0
     
-    # Deduct for issues
+    
     quality_score -= min(issue_count * 0.5, 5)
     
-    # Deduct for high complexity
+    
     if avg_complexity > 10:
         quality_score -= 2
     elif avg_complexity > 5:
         quality_score -= 1
     
-    # Ensure score is between 0 and 10
+    
     quality_score = max(0, min(10, quality_score))
     
     state["quality_score"] = quality_score
     
-    # Track iterations
+    
     iteration = state.get("iteration", 0) + 1
     state["iteration"] = iteration
     
     return state
 
 
-# Register all tools
+
 tool_registry.register("extract_functions", extract_functions)
 tool_registry.register("check_complexity", check_complexity)
 tool_registry.register("detect_issues", detect_issues)

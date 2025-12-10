@@ -1,6 +1,4 @@
-"""
-Pydantic models for workflow engine
-"""
+
 from typing import Dict, Any, Optional, List
 from pydantic import BaseModel, Field
 from datetime import datetime
@@ -8,20 +6,20 @@ from enum import Enum
 
 
 class NodeConfig(BaseModel):
-    """Configuration for a workflow node"""
+    
     function: str
     params: Optional[Dict[str, Any]] = {}
 
 
 class ConditionalEdge(BaseModel):
-    """Configuration for conditional routing"""
+    
     condition: str
     true: str
     false: str
 
 
 class GraphDefinition(BaseModel):
-    """Definition of a workflow graph"""
+   
     name: str
     nodes: Dict[str, NodeConfig]
     edges: Dict[str, str]
@@ -29,13 +27,13 @@ class GraphDefinition(BaseModel):
 
 
 class GraphCreateResponse(BaseModel):
-    """Response for graph creation"""
+   
     graph_id: str
     message: str
 
 
 class WorkflowState(BaseModel):
-    """State that flows through the workflow"""
+    
     data: Dict[str, Any] = Field(default_factory=dict)
     
     def get(self, key: str, default: Any = None) -> Any:
@@ -49,7 +47,7 @@ class WorkflowState(BaseModel):
 
 
 class ExecutionStatus(str, Enum):
-    """Status of workflow execution"""
+    
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -57,7 +55,7 @@ class ExecutionStatus(str, Enum):
 
 
 class ExecutionLogEntry(BaseModel):
-    """Single entry in execution log"""
+    
     node: str
     status: str
     timestamp: datetime
@@ -65,13 +63,13 @@ class ExecutionLogEntry(BaseModel):
 
 
 class RunRequest(BaseModel):
-    """Request to run a workflow"""
+    
     graph_id: str
     initial_state: Dict[str, Any]
 
 
 class RunResponse(BaseModel):
-    """Response from workflow execution"""
+    
     run_id: str
     final_state: Dict[str, Any]
     execution_log: List[ExecutionLogEntry]
@@ -79,7 +77,7 @@ class RunResponse(BaseModel):
 
 
 class StateResponse(BaseModel):
-    """Response for state query"""
+    
     run_id: str
     status: ExecutionStatus
     current_node: Optional[str]

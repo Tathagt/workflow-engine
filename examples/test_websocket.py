@@ -1,19 +1,17 @@
-"""
-WebSocket streaming example - demonstrates real-time workflow execution
-"""
+
 import asyncio
 import websockets
 import json
 
 
 async def test_websocket_streaming():
-    """Test WebSocket streaming of workflow execution"""
+    
     
     print("=" * 60)
     print("WebSocket Streaming Test")
     print("=" * 60)
     
-    # First, create a graph
+    
     import requests
     
     print("\n1. Creating workflow graph...")
@@ -44,14 +42,13 @@ async def test_websocket_streaming():
     graph_id = graph_response.json()["graph_id"]
     print(f"✓ Graph created: {graph_id}")
     
-    # Connect to WebSocket
+    
     print("\n2. Connecting to WebSocket...")
     uri = f"ws://localhost:8000/ws/graph/run/{graph_id}"
     
     async with websockets.connect(uri) as websocket:
         print("✓ WebSocket connected!")
         
-        # Send initial state
         print("\n3. Sending initial state...")
         initial_state = {
             "initial_state": {
@@ -75,7 +72,7 @@ def process_list(items):
         
         await websocket.send(json.dumps(initial_state))
         
-        # Receive and display streaming events
+        
         print("\n4. Receiving real-time updates...\n")
         print("-" * 60)
         
@@ -109,7 +106,7 @@ def process_list(items):
                     state_update = event.get("state_update", {})
                     print(f"[{event_count}] ✓  Node '{node}' completed")
                     
-                    # Show interesting state updates
+                    
                     if "function_count" in state_update:
                         print(f"       → Functions found: {state_update['function_count']}")
                     if "complexity" in state_update:
